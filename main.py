@@ -14,3 +14,6 @@ plt.title("Thermal Image")
 plt.colorbar()
 plt.show()
 
+# Normalize pixel values to the range [0, 1]
+normalized_image = image / 255.0
+
