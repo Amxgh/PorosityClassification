@@ -20,4 +20,13 @@ normalized_image = image / 255.0
 # Resize the image to 128x128
 resized_image = cv2.resize(normalized_image, (128, 128))
 
+# ! DATA AUGMENTATION
+datagen = ImageDataGenerator(
+    rotation_range=20,       # Random rotation
+    width_shift_range=0.1,   # Horizontal shift
+    height_shift_range=0.1,  # Vertical shift
+    zoom_range=0.2,          # Zoom in/out
+    horizontal_flip=True,    # Flip horizontally
+    fill_mode='nearest'      # Fill in missing pixels
+)
 
