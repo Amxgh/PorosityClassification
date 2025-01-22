@@ -17,3 +17,7 @@ plt.show()
 # Normalize pixel values to the range [0, 1]
 normalized_image = image / 255.0
 
+# Resize the image to 128x128
+resized_image = cv2.resize(normalized_image, (128, 128))
+
+
