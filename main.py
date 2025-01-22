@@ -1,41 +1,43 @@
+import os
 import cv2
-import matplotlib.pyplot as plt
 import numpy as np
 from tensorflow.keras.preprocessing.image import ImageDataGenerator
 
-# Load a thermal image in grayscale
-image_path = "image.png"
-image = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)
+# Path to the dataset
+dataset_path = "dataset/correct"
+augmented_path = "dataset/augmented"
 
-# Display the image
-plt.imshow(image, cmap='hot')
-plt.title("Thermal Image")
-plt.colorbar()
-plt.show()
 
-# Normalize pixel values to the range [0, 1]
-normalized_image = image / 255.0
-
-# Resize the image to 128x128
-resized_image = cv2.resize(normalized_image, (128, 128))
-
-# ! DATA AUGMENTATION
 datagen = ImageDataGenerator(
-    rotation_range=20,  # Random rotation
-    width_shift_range=0.1,  # Horizontal shift
-    height_shift_range=0.1,  # Vertical shift
+    rotation_range=20,  # Random rotations
+    width_shift_range=0.1,  # Horizontal shifts
+    height_shift_range=0.1,  # Vertical shifts
     zoom_range=0.2,  # Zoom in/out
-    horizontal_flip=True,  # Flip horizontally
-    fill_mode='nearest'  # Fill in missing pixels
+    horizontal_flip=True,  # Horizontal flips
+    fill_mode='nearest'  # Fill mode for new pixels
 )
 
-# Augmenting the image
-image_batch = resized_image.reshape((1, 128, 128, 1))
-augmented = datagen.flow(image_batch, batch_size=1)
+# Loop through each image in the dataset
+for filename in os.listdir(dataset_path):
+    filepath = os.path.join(dataset_path, filename)
+    image = cv2.imread(filepath, cv2.IMREAD_GRAYSCALE)
 
-# Visualize augmented images
-for i in range(5):
-    aug_image = next(augmented)[0].reshape(128, 128)
-    plt.imshow(aug_image, cmap='hot')
-    plt.title(f"Augmented Image {i + 1}")
-    plt.show()
+    if image is None:
+        continue
+
+
+    image = cv2.resize(image, (128, 128))  # Resize image
+
+    image = np.expand_dims(image, axis=-1)  # Make the image grayscale
+
+    image = np.expand_dims(image, axis=0)  # clarify that each input is just one image
+
+    # Generate and save augmented images
+    i = 0
+    for batch in datagen.flow(image, batch_size=1, save_to_dir=augmented_path,
+                              save_prefix='aug', save_format='jpg'):
+        i += 1
+        if i >= 5:  # Generate 5 augmented images per original image
+            break
+
+print("Data augmentation completed.")
