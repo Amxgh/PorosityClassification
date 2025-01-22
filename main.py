@@ -30,3 +30,14 @@ datagen = ImageDataGenerator(
     fill_mode='nearest'      # Fill in missing pixels
 )
 
+
+# Augmenting the image
+image_batch = resized_image.reshape((1, 128, 128, 1))
+augmented = datagen.flow(image_batch, batch_size=1)
+
+# Visualize augmented images
+for i in range(5):
+    aug_image = next(augmented)[0].reshape(128, 128)
+    plt.imshow(aug_image, cmap='hot')
+    plt.title(f"Augmented Image {i+1}")
+    plt.show()
