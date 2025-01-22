@@ -1,6 +1,6 @@
 /.idea/modules.xml
 /.idea/.gitignore
-/image.png
 /.idea/inspectionProfiles/profiles_settings.xml
 /.idea/Thermal Imaging ML Model.iml
 /.idea/vcs.xml
+/dataset/
