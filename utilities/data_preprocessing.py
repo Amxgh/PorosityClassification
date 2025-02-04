@@ -4,8 +4,8 @@ import numpy as np
 from tensorflow.keras.preprocessing.image import ImageDataGenerator
 
 # Path to the dataset
-dataset_path = "dataset/correct"
-augmented_path = "dataset/augmented"
+dataset_path = "../dataset/correct"
+augmented_path = "../dataset/augmented"
 
 
 datagen = ImageDataGenerator(
