@@ -1,43 +1,67 @@
 import os
-import cv2
 import numpy as np
+import pandas as pd
 from tensorflow.keras.preprocessing.image import ImageDataGenerator
 
 # Path to the dataset
-dataset_path = "../dataset/correct"
-augmented_path = "../dataset/augmented"
+dataset_path = "dataset/correct/"
+augmented_path = "dataset/augmented/"
 
-
+# Initialize the data augmentation generator
 datagen = ImageDataGenerator(
-    rotation_range=20,  # Random rotations
-    width_shift_range=0.1,  # Horizontal shifts
-    height_shift_range=0.1,  # Vertical shifts
-    zoom_range=0.2,  # Zoom in/out
-    horizontal_flip=True,  # Horizontal flips
-    fill_mode='nearest'  # Fill mode for new pixels
+    rotation_range=20,
+    width_shift_range=0.1,
+    height_shift_range=0.1,
+    zoom_range=0.2,
+    horizontal_flip=True,
+    fill_mode='nearest'
 )
 
-# Loop through each image in the dataset
+
+# Function to check if the file is a valid CSV
+def is_valid_csv(file_path):
+    try:
+        data = pd.read_csv(file_path)
+        return data is not None
+    except:
+        return False
+
+
+# Loop through each file in the dataset
 for filename in os.listdir(dataset_path):
     filepath = os.path.join(dataset_path, filename)
-    image = cv2.imread(filepath, cv2.IMREAD_GRAYSCALE)
 
-    if image is None:
+    # Only process CSV files
+    if not filename.lower().endswith('.csv'):
         continue
 
+    if is_valid_csv(filepath):
+        data = pd.read_csv(filepath)
 
-    image = cv2.resize(image, (128, 128))  # Resize image
+        # Assuming each CSV is a matrix of temperature values, normalize the data
+        data = data.values  # Convert DataFrame to numpy array
 
-    image = np.expand_dims(image, axis=-1)  # Make the image grayscale
+        # Optionally reshape or preprocess the data (e.g., resize to fit model)
+        # Here, we assume the matrix should be reshaped to (128, 128)
+        data = np.resize(data, (128, 128))  # Resize to 128x128 if necessary
 
-    image = np.expand_dims(image, axis=0)  # clarify that each input is just one image
+        # Expand dimensions to simulate batch size for data augmentation
+        data = np.expand_dims(data, axis=-1)  # Add channel dimension
+        data = np.expand_dims(data, axis=0)  # Add batch dimension
 
-    # Generate and save augmented images
-    i = 0
-    for batch in datagen.flow(image, batch_size=1, save_to_dir=augmented_path,
-                              save_prefix='aug', save_format='jpg'):
-        i += 1
-        if i >= 5:  # Generate 5 augmented images per original image
-            break
+        # Generate and save augmented data
+        i = 0
+        for batch in datagen.flow(data, batch_size=1, save_to_dir=augmented_path,
+                                  save_prefix='aug'):
+
+            # Save the augmented data as a CSV file
+            augmented_data = batch[0, :, :, 0]  # Get the augmented matrix
+            augmented_filename = f"{augmented_path}aug_{i}_{filename}"
+            np.savetxt(augmented_filename, augmented_data, delimiter=",")
+            i += 1
+            if i >= 5:  # Generate 5 augmented matrices per original data
+                break
+    else:
+        print(f"Skipped non-CSV file: {filename}")
 
 print("Data augmentation completed.")
