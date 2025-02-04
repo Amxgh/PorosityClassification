@@ -1,12 +1,12 @@
 import tensorflow as tf
 import numpy as np
-import cv2
+import pandas as pd
 import os
 
 # Load trained autoencoder
 autoencoder = tf.keras.models.load_model("models/autoencoder.h5")
 
-# Path to test images (both acceptable and unacceptable)
+# Path to test CSV files
 test_path = "test_images"
 
 threshold = 0.02  # Set a threshold for reconstruction error
@@ -14,19 +14,24 @@ threshold = 0.02  # Set a threshold for reconstruction error
 for filename in os.listdir(test_path):
     filepath = os.path.join(test_path, filename)
 
-    image = cv2.imread(filepath, cv2.IMREAD_GRAYSCALE)
-    image = cv2.resize(image, (128, 128))
-    image = image.astype("float32") / 255.0
-    image = np.expand_dims(image, axis=[0, -1])  # Expand for model input
+    # Load CSV file
+    if filename.lower().endswith('.csv'):
+        data = pd.read_csv(filepath)
+        data = data.values  # Convert DataFrame to numpy array
 
-    # Reconstruct the image
-    reconstructed = autoencoder.predict(image)
+        # Reshape or preprocess the data as needed (e.g., resize to 128x128)
+        data = np.resize(data, (128, 128))  # Resize matrix to 128x128
+        data = np.expand_dims(data, axis=-1)  # Add channel dimension
+        data = np.expand_dims(data, axis=0)  # Add batch dimension
 
-    # Compute reconstruction error
-    error = np.mean((image - reconstructed) ** 2)
+        # Reconstruct the data with the autoencoder model
+        reconstructed = autoencoder.predict(data)
 
-    # Classify as acceptable or unacceptable
-    if error > threshold:
-        print(f"{filename}: ❌ Unacceptable (Error: {error:.5f})")
-    else:
-        print(f"{filename}: ✅ Acceptable (Error: {error:.5f})")
+        # Compute reconstruction error
+        error = np.mean((data - reconstructed) ** 2)
+
+        # Classify as acceptable or unacceptable
+        if error > threshold:
+            print(f"{filename}: ❌ Unacceptable (Error: {error:.5f})")
+        else:
+            print(f"{filename}: ✅ Acceptable (Error: {error:.5f})")
