@@ -1,15 +1,32 @@
 import tensorflow as tf
-from tensorflow.keras.preprocessing.image import ImageDataGenerator
+import numpy as np
+import cv2
+import os
 
-datagen = ImageDataGenerator(rescale=1./255)
+# Load trained autoencoder
+autoencoder = tf.keras.models.load_model("models/autoencoder.h5")
 
-val_generator = datagen.flow_from_directory(
-    "dataset", target_size=(128, 128), color_mode='grayscale',
-    batch_size=32, class_mode='binary'
-)
+# Path to test images (both acceptable and unacceptable)
+test_path = "test_images"
 
-# Load the trained model
-model = tf.keras.models.load_model("models/saved_model.h5")
+threshold = 0.02  # Set a threshold for reconstruction error
 
-test_loss, test_acc = model.evaluate(val_generator)
-print(f"Test Accuracy: {test_acc * 100:.2f}%")
+for filename in os.listdir(test_path):
+    filepath = os.path.join(test_path, filename)
+
+    image = cv2.imread(filepath, cv2.IMREAD_GRAYSCALE)
+    image = cv2.resize(image, (128, 128))
+    image = image.astype("float32") / 255.0
+    image = np.expand_dims(image, axis=[0, -1])  # Expand for model input
+
+    # Reconstruct the image
+    reconstructed = autoencoder.predict(image)
+
+    # Compute reconstruction error
+    error = np.mean((image - reconstructed) ** 2)
+
+    # Classify as acceptable or unacceptable
+    if error > threshold:
+        print(f"{filename}: ❌ Unacceptable (Error: {error:.5f})")
+    else:
+        print(f"{filename}: ✅ Acceptable (Error: {error:.5f})")
