@@ -1,36 +1,42 @@
 import tensorflow as tf
-from tensorflow.keras.models import Sequential
-from tensorflow.keras.layers import Conv2D, MaxPooling2D, Flatten, Dense, Dropout
+from tensorflow.keras.models import Model
+from tensorflow.keras.layers import Input, Conv2D, MaxPooling2D, UpSampling2D
 from tensorflow.keras.preprocessing.image import ImageDataGenerator
 
+# Data Preprocessing
 datagen = ImageDataGenerator(rescale=1./255, validation_split=0.2)
 
 train_generator = datagen.flow_from_directory(
     "dataset", target_size=(128, 128), color_mode='grayscale',
-    batch_size=32, class_mode='binary', subset='training'
+    batch_size=32, class_mode=None, subset='training'
 )
 
 val_generator = datagen.flow_from_directory(
     "dataset", target_size=(128, 128), color_mode='grayscale',
-    batch_size=32, class_mode='binary', subset='validation'
+    batch_size=32, class_mode=None, subset='validation'
 )
 
-model = Sequential([
-    Conv2D(32, (3,3), activation='relu', input_shape=(128,128,1)),
-    MaxPooling2D(2,2),
-    Conv2D(64, (3,3), activation='relu'),
-    MaxPooling2D(2,2),
-    Conv2D(128, (3,3), activation='relu'),
-    MaxPooling2D(2,2),
-    Flatten(),
-    Dense(128, activation='relu'),
-    Dropout(0.5),
-    Dense(1, activation='sigmoid')
-])
+# Autoencoder Architecture
+input_img = Input(shape=(128, 128, 1))
 
-model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
+# Encoder
+x = Conv2D(32, (3,3), activation='relu', padding='same')(input_img)
+x = MaxPooling2D((2,2), padding='same')(x)
+x = Conv2D(64, (3,3), activation='relu', padding='same')(x)
+x = MaxPooling2D((2,2), padding='same')(x)
 
-model.fit(train_generator, validation_data=val_generator, epochs=10)
+# Decoder
+x = Conv2D(64, (3,3), activation='relu', padding='same')(x)
+x = UpSampling2D((2,2))(x)
+x = Conv2D(32, (3,3), activation='relu', padding='same')(x)
+x = UpSampling2D((2,2))(x)
+decoded = Conv2D(1, (3,3), activation='sigmoid', padding='same')(x)
+
+autoencoder = Model(input_img, decoded)
+autoencoder.compile(optimizer='adam', loss='mse')
+
+# Train Autoencoder
+autoencoder.fit(train_generator, validation_data=val_generator, epochs=10)
 
 # Save model
-model.save("models/saved_model.h5")
+autoencoder.save("models/autoencoder.h5")
