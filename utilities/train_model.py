@@ -13,11 +13,9 @@ from tensorflow.keras.optimizers import Adam
 from tensorflow.keras.callbacks import EarlyStopping
 from tensorflow.keras.losses import BinaryCrossentropy
 
-# Path to your CSV dataset
 csv_dir = 'dataset/augmented/'
 
 
-# Function to load CSV files
 def load_csv_data(csv_dir):
     data = []
     for file_name in os.listdir(csv_dir):
@@ -28,21 +26,22 @@ def load_csv_data(csv_dir):
     return np.array(data)
 
 
-# Load the CSV data
+# Load full data
 csv_data = load_csv_data(csv_dir)
-
-# Reshape the data to (samples, 128, 128, 1)
-csv_data = csv_data.reshape((csv_data.shape[0], 128, 128, 1))  # Adjust shape based on your data
-
-# Normalize the data (optional, but recommended)
+csv_data = csv_data.reshape((csv_data.shape[0], 128, 128, 1))
 csv_data = csv_data / 255.0
-csv_data = np.clip(csv_data, 0, 1)  # Ensures all values are within [0,1]
+csv_data = np.clip(csv_data, 0, 1)
 
-# Split data into train and validation sets (80% training, 20% validation)
-train_data, val_data = train_test_split(csv_data, test_size=0.2, random_state=42)
+# Split into training+validation and test (e.g., 85% train_val, 15% test)
+train_val_data, test_data = train_test_split(csv_data, test_size=0.15, random_state=42)
+
+# Further split train_val_data into training and validation (e.g., ~82% training, ~18% validation)
+train_data, val_data = train_test_split(train_val_data, test_size=0.1765, random_state=42)
+
+print("Data loaded and split into training, validation, and test sets.")
 
 
-# Define the custom data generator
+
 class CSVDataGenerator(Sequence):
     def __init__(self, data, batch_size=32, shuffle=True):
         self.data = data
@@ -64,18 +63,19 @@ class CSVDataGenerator(Sequence):
             np.random.shuffle(self.indices)
 
 
-# Create data generators for training and validation
+# Create generators
 train_data_generator = CSVDataGenerator(train_data, batch_size=32)
 val_data_generator = CSVDataGenerator(val_data, batch_size=32)
+test_data_generator = CSVDataGenerator(test_data, batch_size=32, shuffle=False)
+
+
 
 
 from tensorflow.keras.layers import Input, Conv2D, MaxPooling2D, UpSampling2D
 from tensorflow.keras.models import Model
 
-# # Define an autoencoder model
 # input_img = Input(shape=(128, 128, 1))
 #
-# # Encoder
 # x = Conv2D(32, (3, 3), activation='relu', padding='same')(input_img)
 # x = MaxPooling2D((2, 2), padding='same')(x)
 # x = Conv2D(16, (3, 3), activation='relu', padding='same')(x)
@@ -121,27 +121,25 @@ x = UpSampling2D((2, 2))(x)
 
 decoded = Conv2D(1, (3, 3), activation='sigmoid', padding='same')(x)
 
-# Define model
 autoencoder = Model(input_img, decoded)
 
-# Compile with lower learning rate
-autoencoder.compile(optimizer=Adam(learning_rate=0.0001), loss=BinaryCrossentropy(from_logits=False))
+autoencoder.compile(optimizer=Adam(learning_rate=0.0001), loss=BinaryCrossentropy(from_logits=False), metrics=['accuracy'])
 
 # Early stopping callback
-early_stopping = EarlyStopping(monitor='val_loss', patience=5, restore_best_weights=True)
+# early_stopping = EarlyStopping(monitor='val_loss', patience=5, restore_best_weights=True)
 
 print("Autoencoder model created.")
 
-# Train with early stopping
+# Train the model
 autoencoder.fit(train_data_generator,
                 epochs=5,
-                validation_data=val_data_generator,
-                callbacks=[early_stopping])
+                validation_data=val_data_generator)
 
-# Train the model with validation data
-# autoencoder.fit(train_data_generator, epochs=5, validation_data=val_data_generator)
+test_loss, test_accuracy = autoencoder.evaluate(test_data_generator)
+print("Test Loss:", test_loss)
+print("Test Accuracy:", test_accuracy)
 
-# Save the trained model for later use
+# Saving the model
 autoencoder.save("models/autoencoder-updated", save_format="tf")
 
 print("Training Completed")
