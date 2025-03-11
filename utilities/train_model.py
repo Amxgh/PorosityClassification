@@ -10,7 +10,6 @@ from tensorflow.keras.utils import Sequence
 
 dataset_path = "../dataset/dataset.npz"
 try:
-    # Load the npz file
     data = np.load(dataset_path, allow_pickle=True)
 except FileNotFoundError:
     print(f"Error: '{dataset_path}' not found. Please check the file path.")
