@@ -7,6 +7,7 @@ from tensorflow.keras.layers import Input, Conv2D, MaxPooling2D
 from tensorflow.keras.models import Model
 from tensorflow.keras.optimizers import Adam
 from tensorflow.keras.utils import Sequence
+from tensorflow.python.keras.callbacks import EarlyStopping
 
 dataset_path = "../dataset/dataset.npz"
 try:
@@ -114,6 +115,8 @@ model.compile(optimizer=Adam(learning_rate=0.0001), loss=keras.losses.BinaryCros
 # Model Summary
 model.summary()
 
+early_stop = EarlyStopping(monitor='val_loss', patience=5, restore_best_weights=True)
+
 # Train the model
 model.fit(X_train, Y_train, epochs=20, batch_size=32, validation_data=(X_val, Y_val))
 print("Autoencoder model created.")
@@ -127,3 +130,4 @@ print("Test Accuracy:", test_accuracy)
 model.save("models/model", save_format="tf")
 
 print("Training Completed")
+
