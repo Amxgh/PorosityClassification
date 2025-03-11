@@ -54,4 +54,4 @@ X_values = X_values / np.max(np.abs(X_values))
 
 np.savez("./dataset/dataset.npz",
         X_values=X_values,
-         Y_valies=Y_values)
+         Y_values=Y_values)
