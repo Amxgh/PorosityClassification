@@ -79,6 +79,6 @@ the model on the test set and then saves the model to ./models/model.
 
 7. The model is then compiled using the adam optimizer with a learning rate of 0.0001 and binary crossentropy loss.
 8. The model is then fit using the training data and validation data. The model is trained for 20 epochs (Takes around
-   10 minutes).
+   25 minutes).
 9. The model is then evaluated on the test data and the accuracy is printed.
 10. The model is then saved to ./models/model.
