@@ -1,6 +1,8 @@
 import csv
 import os
-import shutil
+import numpy as np
+import pandas as pd
+
 
 filename: str = "./dataverse_files/thermal-porosity-table.csv"
 
@@ -23,31 +25,33 @@ with open(filename, 'r') as csvfile:
     # get total number of rows
     print("Total no. of rows: %d" % (csvreader.line_num))
 
-# printing the field names
-print('Field names are:' + ', '.join(field for field in fields))
-# print(rows)
+directory = "./dataset/all_data/"
 
-valid_data: list = []
-for row in rows:
-    if int(row[10]) == 0:
-        valid_data.append(int(row[0]))
+Y_values: list = [int(row[10]) for row in rows]
+X_values = []
 
-original_path: str = "./dataverse_files/cropped_thinwall_CSV_pyrometer/cropped_thinwall_CSV_pyrometer/"
-final_path: str = "./dataset/correct/"
+files = [f for f in os.listdir(directory)]
 
-for file_number in valid_data:
-    filename = f"Frame_{file_number}"
+files.sort(key=lambda x: int(x.split('_')[1]))
 
-    source_path = os.path.join(original_path, filename)
-    destination_path = os.path.join(final_path, filename + ".csv")
+for file in files:
+    file_path = os.path.join(directory, file)
 
-    # Move the file
     try:
-        # Check if the source file exists before attempting to move
-        if os.path.exists(source_path):
-            shutil.move(source_path, destination_path)
-            print(f"File moved to {destination_path}")
-        else:
-            print(f"Source file {filename} not found!")
+        df = pd.read_csv(file_path).iloc[:, 1:] # Drops the index column
+
+        if df.shape != (200, 201):
+            print(df.shape)
+        X_values.append(df.to_numpy())
     except Exception as e:
-        print(f"Error: {e}")
+        print(f"Error reading {file}: {e}")
+
+
+X_values = np.vstack(X_values)
+
+
+X_values = X_values / np.max(np.abs(X_values))
+
+np.savez("./dataset/dataset.npz",
+        X_values=X_values,
+         Y_valies=Y_values)
