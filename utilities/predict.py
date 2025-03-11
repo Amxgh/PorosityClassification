@@ -33,7 +33,7 @@ def classify_csv(csv_path):
     prediction = model.predict(X_values)[0][0]
     print(prediction)
     # Return classification result
-    return "Healthy" if prediction >= 0.5 else "Unhealthy"
+    return "Unhealthy" if prediction >= 0.5 else "Healthy"
 
 # Example usage
 print("Frame 6" + classify_csv("./dataset/all_data/Frame_6"))
