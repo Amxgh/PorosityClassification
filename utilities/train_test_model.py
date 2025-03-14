@@ -1,13 +1,24 @@
+import time
+
 import numpy as np
 import tensorflow.keras.regularizers as regularizers
+from keras.optimizers import Adam, SGD, RMSprop
+from sklearn.metrics import confusion_matrix
 from sklearn.model_selection import train_test_split
 from tensorflow import keras
 from tensorflow.keras.layers import Flatten, Dense, Dropout, BatchNormalization, Activation
 from tensorflow.keras.layers import Input, Conv2D, MaxPooling2D
 from tensorflow.keras.models import Model
-from tensorflow.keras.optimizers import Adam
 from tensorflow.keras.utils import Sequence
-from tensorflow.python.keras.callbacks import EarlyStopping
+from tensorflow.python.keras.callbacks import EarlyStopping, ModelCheckpoint
+
+optimizers = {
+    'Adam': Adam,
+    'SGD': SGD,
+    'RMSprop': RMSprop
+}
+
+learning_rates = [0.01, 0.001, 0.0005, 0.0001]
 
 dataset_path = "../dataset/dataset.npz"
 try:
@@ -22,7 +33,7 @@ except KeyError as e:
 X_values = data['X_values']
 Y_values = data['Y_values']
 
-X_values = X_values.reshape(1564, 200, 201)
+X_values = X_values.reshape(1564, 200, 201, 1)
 
 X_train, X_test, Y_train, Y_test = train_test_split(X_values, Y_values, test_size=0.15, random_state=42)
 X_train, X_val, Y_train, Y_val = train_test_split(X_train, Y_train, test_size=0.1765, random_state=42)
@@ -106,28 +117,49 @@ x = Dropout(0.4)(x)
 # Output Layer (Binary Classification)
 output = Dense(1, activation='sigmoid')(x)
 
-# Create Model
 model = Model(inputs=input_img, outputs=output)
 
-# Compile Model
-model.compile(optimizer=Adam(learning_rate=0.0001), loss=keras.losses.BinaryCrossentropy(), metrics=['accuracy'])
+results = {}
+for opt_name, opt in optimizers.items():
+    for lr in learning_rates:
+        optimizer = opt(learning_rate=lr)
+        model.compile(optimizer=optimizer, loss=keras.losses.BinaryCrossentropy(), metrics=['accuracy'])
 
-# Model Summary
-model.summary()
+        model.summary()
 
-early_stop = EarlyStopping(monitor='val_loss', patience=5, restore_best_weights=True)
+        early_stop = EarlyStopping(monitor='val_loss', patience=5, restore_best_weights=True)
+        model_checkpoint = ModelCheckpoint(f"models/best_model_{opt_name}_{lr}",
+                                           save_best_only=True,
+                                           save_format="tf")
 
-# Train the model
-model.fit(X_train, Y_train, epochs=20, batch_size=32, validation_data=(X_val, Y_val))
-print("Autoencoder model created.")
+        start_time = time.time()
+        history = model.fit(X_train, Y_train, epochs=20,
+                            validation_data=(X_val, Y_val),
+                            callbacks=[early_stop, model_checkpoint])
 
-# Evaluate the model
-test_loss, test_accuracy = model.evaluate(test_data_generator)
-print("Test Loss:", test_loss)
-print("Test Accuracy:", test_accuracy)
+        end_time = time.time()
+        print("Autoencoder model created.")
 
-# Saving the model
-model.save("models/model", save_format="tf")
+        training_time = end_time - start_time
 
-print("Training Completed")
+        predictions = model.predict(X_test)
 
+        predicted_classes = (predictions > 0.5).astype(int).flatten()
+
+        accuracy = np.mean(Y_test == predicted_classes)
+        conf_matrix = confusion_matrix(Y_test, predicted_classes)
+
+        print("Accuracy: ", accuracy)
+        print("Confusion Matrix: ", conf_matrix)
+
+        results[(opt_name, lr)] = {
+            'accuracy': accuracy,
+            'confusion_matrix': conf_matrix,
+            'training_time': training_time
+        }
+
+        print("Training Completed")
+
+print("Results: ", results)
+np.savez("results", results=results)
+print("Results saved to results.npz")
