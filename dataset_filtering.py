@@ -49,7 +49,6 @@ for file in files:
 
 X_values = np.vstack(X_values)
 
-
 X_values = X_values / np.max(np.abs(X_values))
 
 np.savez("./dataset/dataset.npz",
