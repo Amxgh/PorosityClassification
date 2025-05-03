@@ -27,11 +27,15 @@ X_values = data['X_values']
 Y_values = data['y_values']
 
 X_values = X_values.astype(np.float32)
+
+
 for i in range(len(X_values)):
     std = X_values[i].std()
     if std < 1e-10:
         std = 1.0
     X_values[i] = (X_values[i] - X_values[i].mean()) / std
+
+# X_values = X_values / np.max(np.abs(X_values))
 
 # Ensure the right shape
 X_values = X_values.reshape(-1, 128, 128, 1)
@@ -63,6 +67,7 @@ optimizers = {
     # 'Adam': Adam,
     'SGD': SGD
 }
+
 # learning_rates = [0.01, 0.001, 0.0005, 0.0001]
 learning_rates= [0.01]
 
