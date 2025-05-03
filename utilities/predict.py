@@ -1,7 +1,7 @@
 import tensorflow as tf
 import numpy as np
 import pandas as pd
-from scipy.ndimage import zoom  # Used for resizing numerical data if needed
+from scipy.ndimage import zoom
 
 # from utilities.train_model import X_values
 
