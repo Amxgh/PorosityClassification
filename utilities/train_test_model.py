@@ -1,4 +1,5 @@
 import itertools
+import os
 import time
 import numpy as np
 import tensorflow as tf
@@ -12,7 +13,7 @@ from tensorflow.keras.models import Model
 from tensorflow.keras.callbacks import EarlyStopping, ModelCheckpoint
 from sklearn.utils import class_weight
 
-dataset_path = "../data/augmented_data.npz"
+dataset_path = "./data/augmented_data.npz"
 # dataset_path = "../resized_data.npz"
 try:
     data = np.load(dataset_path, allow_pickle=True)
