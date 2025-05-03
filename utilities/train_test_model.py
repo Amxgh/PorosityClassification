@@ -1,3 +1,4 @@
+import itertools
 import time
 import numpy as np
 import tensorflow as tf
@@ -42,33 +43,7 @@ X_train, X_val, Y_train, Y_val = train_test_split(X_train, Y_train,
                                                   test_size=0.1765,
                                                   random_state=42)
 
-input_img = Input(shape=(128, 128, 1))
 
-x = Conv2D(32, (3, 3), padding='same')(input_img)
-x = BatchNormalization()(x)
-x = Activation('relu')(x)
-x = MaxPooling2D(pool_size=(2, 2))(x)
-x = Dropout(0.1)(x)
-
-x = Conv2D(64, (3, 3), padding='same')(x)
-x = BatchNormalization()(x)
-x = Activation('relu')(x)
-x = MaxPooling2D(pool_size=(2, 2))(x)
-x = Dropout(0.1)(x)
-
-x = Conv2D(128, (3, 3), padding='same')(x)
-x = BatchNormalization()(x)
-x = Activation('relu')(x)
-x = MaxPooling2D(pool_size=(2, 2))(x)
-x = Dropout(0.1)(x)
-
-x = GlobalAveragePooling2D()(x)
-x = Dense(64, activation='relu')(x)
-x = BatchNormalization()(x)
-x = Dropout(0.1)(x)
-
-# Removed the custom bias init
-output = Dense(1, activation='sigmoid')(x)
 
 classes = np.unique(Y_train)
 
@@ -92,73 +67,106 @@ optimizers = {
 learning_rates= [0.01]
 
 results = {}
-for opt_name, opt in optimizers.items():
-    for lr in learning_rates:
-        model = Model(inputs=input_img, outputs=output)
+# for opt_name, opt in optimizers.items():
+#     for lr in learning_rates:
+pool_size = [(2, 2), (3, 3)]
+combinations = list(itertools.product(pool_size, repeat=3))
 
-        model.compile(
-            optimizer=Adam(learning_rate=1e-3),
-            loss="binary_crossentropy",
-            metrics=["accuracy", keras.metrics.Precision(name="precision"),
-                     keras.metrics.Recall(name="recall"),
-                     keras.metrics.AUC(name="auc")]
-        )
-        model.summary()
+for i, (p1, p2, p3) in enumerate(combinations):
+    tf.keras.backend.clear_session()
 
-        early_stop = EarlyStopping(monitor='val_loss', patience=8, restore_best_weights=True)
-        model_checkpoint = ModelCheckpoint("models/best_model_simplified",
-                                           save_best_only=True,
-                                           save_format="tf")
-        start_time = time.time()
-        history = model.fit(
-            X_train, Y_train,
-            epochs=30,
-            validation_data=(X_val, Y_val),
-            callbacks=[early_stop, model_checkpoint],
-            class_weight=class_weight_dict
-        )
-        end_time = time.time()
+    input_img = Input(shape=(128, 128, 1))
 
-        val_preds = model.predict(X_val)
-        thresholds = np.linspace(0, 1, 101)
-        best_threshold = 0.5
-        best_f1 = 0
+    x = Conv2D(32, (3,3), padding='same')(input_img)
+    x = BatchNormalization()(x)
+    x = Activation('relu')(x)
+    x = MaxPooling2D(pool_size=p1)(x)
+    x = Dropout(0.2)(x)
 
-        for t in thresholds:
-            val_pred_classes = (val_preds > t).astype(int)
-            current_f1 = f1_score(Y_val, val_pred_classes)
-            if current_f1 > best_f1:
-                best_f1 = current_f1
-                best_threshold = t
+    x = Conv2D(64, (3,3), padding='same')(x)
+    x = BatchNormalization()(x)
+    x = Activation('relu')(x)
+    x = MaxPooling2D(pool_size=p2)(x)
+    x = Dropout(0.1)(x)
 
-        print(f"Optimal threshold on validation set: {best_threshold:.2f} with F1 score: {best_f1:.4f}")
+    x = Conv2D(128, (5,5), padding='same')(x)
+    x = BatchNormalization()(x)
+    x = Activation('relu')(x)
+    x = MaxPooling2D(pool_size=p3)(x)
+    x = Dropout(0.2)(x)
 
-        test_preds = model.predict(X_test)
-        predicted_classes = (test_preds > best_threshold).astype(int).flatten()
+    x = GlobalAveragePooling2D()(x)
+    x = Dense(64, activation='relu')(x)
+    x = BatchNormalization()(x)
+    x = Dropout(0.2)(x)
 
-        accuracy = accuracy_score(Y_test, predicted_classes)
-        conf_matrix = confusion_matrix(Y_test, predicted_classes)
-        precision = precision_score(Y_test, predicted_classes)
-        recall = recall_score(Y_test, predicted_classes)
+    # Removed the custom bias init
+    output = Dense(1, activation='sigmoid')(x)
+    model = Model(inputs=input_img, outputs=output)
 
-        print("Test Accuracy:", accuracy)
-        print("Test Confusion Matrix:\n", conf_matrix)
-        print("Test Precision:", precision)
-        print("Test Recall:", recall)
+    model.compile(
+        optimizer=Adam(learning_rate=1e-3),  # Using a fixed learning rate for simplicity
+        loss="binary_crossentropy",
+        metrics=["accuracy", keras.metrics.Precision(name="precision"),
+                 keras.metrics.Recall(name="recall"),
+                 keras.metrics.AUC(name="auc")]
+    )
+    model.summary()
 
-        print("Train label distribution:", np.bincount(Y_train.astype(int)))
-        print("Validation label distribution:", np.bincount(Y_val.astype(int)))
-        print("Test label distribution:", np.bincount(Y_test.astype(int)))
+    early_stop = EarlyStopping(monitor='val_loss', patience=8, restore_best_weights=True)
+    model_checkpoint = ModelCheckpoint("models/best_model_simplified",
+                                       save_best_only=True,
+                                       save_format="tf")
+    start_time = time.time()
+    history = model.fit(
+        X_train, Y_train,
+        epochs=20,
+        validation_data=(X_val, Y_val),
+        callbacks=[early_stop, model_checkpoint],
+        class_weight=class_weight_dict
+    )
+    end_time = time.time()
 
-        results[(opt_name, lr)] = {
-            'accuracy': accuracy,
-            'confusion_matrix': conf_matrix.tolist(),
-            'time': end_time - start_time,
-        }
+    val_preds = model.predict(X_val)
+    thresholds = np.linspace(0, 1, 101)
+    best_threshold = 0.5
+    best_f1 = 0
 
-        model.save(f"./utilities/models/{opt_name}_lr_{lr:.6f}")
-        print("Training Completed")
+    for t in thresholds:
+        val_pred_classes = (val_preds > t).astype(int)
+        current_f1 = f1_score(Y_val, val_pred_classes)
+        if current_f1 > best_f1:
+            best_f1 = current_f1
+            best_threshold = t
+
+    print(f"Optimal threshold on validation set: {best_threshold:.2f} with F1 score: {best_f1:.4f}")
+
+    test_preds = model.predict(X_test)
+    predicted_classes = (test_preds > best_threshold).astype(int).flatten()
+
+    accuracy = accuracy_score(Y_test, predicted_classes)
+    conf_matrix = confusion_matrix(Y_test, predicted_classes)
+    precision = precision_score(Y_test, predicted_classes)
+    recall = recall_score(Y_test, predicted_classes)
+
+    print("Test Accuracy:", accuracy)
+    print("Test Confusion Matrix:\n", conf_matrix)
+    print("Test Precision:", precision)
+    print("Test Recall:", recall)
+
+    print("Train label distribution:", np.bincount(Y_train.astype(int)))
+    print("Validation label distribution:", np.bincount(Y_val.astype(int)))
+    print("Test label distribution:", np.bincount(Y_test.astype(int)))
+
+    results[(p1, p2, p3)] = {
+        'accuracy': accuracy,
+        'confusion_matrix': conf_matrix.tolist(),
+        'time': end_time - start_time,
+    }
+
+    model.save(f"./utilities/models/kernels")
+    print("Training Completed")
 
 print("Results: ", results)
-np.savez("results", results=results)
+np.savez("results-finding-kernelsize", results=results)
 print("Results saved to results.npz")
